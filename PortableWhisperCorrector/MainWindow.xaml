@@ -1,0 +1,312 @@
+<Window x:Class="PortableWhisperCorrector.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="WhisperCorrector - 高速文字起こし &amp; AI文章校正" Height="780" Width="920"
+        MinHeight="680" MinWidth="800"
+        WindowStartupLocation="CenterScreen"
+        Background="#F5F6F8"
+        Icon="app.ico"
+        AllowDrop="True"
+        PreviewDragEnter="Window_PreviewDragEnter"
+        PreviewDragOver="Window_PreviewDragOver"
+        PreviewDrop="Window_PreviewDrop">
+
+    <Window.Resources>
+        <Style TargetType="GroupBox">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#E0E3E8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GroupBox">
+                        <Grid>
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="6">
+                                <Grid Margin="{TemplateBinding Padding}">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"
+                                                      TextElement.FontWeight="SemiBold"
+                                                      TextElement.Foreground="#1E293B"
+                                                      Margin="0,0,0,8"/>
+                                    <ContentPresenter Grid.Row="1"/>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="#1E293B"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F1F5F9"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.5"/>
+                    <Setter Property="Cursor" Value="Arrow"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#0284C7"/>
+            <Setter Property="BorderBrush" Value="#0284C7"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#0369A1"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- 音声ファイル選択 (D&D) -->
+            <RowDefinition Height="Auto"/> <!-- モデル・文脈設定 -->
+            <RowDefinition Height="Auto"/> <!-- AI補正 (Gemini) -->
+            <RowDefinition Height="Auto"/> <!-- 詳細設定 (折りたたみ) -->
+            <RowDefinition Height="Auto"/> <!-- 出力パス・進捗・開始ボタン -->
+            <RowDefinition Height="*"/>    <!-- プレビュー＆ログタブ -->
+        </Grid.RowDefinitions>
+
+        <!-- 1. 音声ファイル入力エリア (ドラッグ＆ドロップ対応) -->
+        <Border Grid.Row="0" Name="borderDropZone" Background="White" BorderBrush="#0284C7" BorderThickness="2" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock Text="🎵 音声ファイル:" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,8,0"/>
+                        <TextBlock Text="（ここにファイルをドラッグ＆ドロップできます）" Foreground="#64748B" FontSize="11" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBox Name="txtInputFile" IsReadOnly="True" AllowDrop="False" Background="#F8FAFC" BorderBrush="#CBD5E1" Padding="6" FontSize="12"
+                             Text="音声ファイルを選択またはドラッグ＆ドロップしてください (.wav, .mp3, .m4a, .mp4, .flac, .ogg)"
+                             Foreground="#64748B"/>
+                </StackPanel>
+                <Button Grid.Column="1" Name="btnBrowse" Content="参照..." Width="90" Height="36" Margin="12,0,0,0" VerticalAlignment="Bottom" Click="BtnBrowse_Click"/>
+            </Grid>
+        </Border>
+
+        <!-- 2. モデル & 文脈ヒント設定 -->
+        <GroupBox Grid.Row="1" Header="文字起こしモデル ＆ 文脈設定">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="130"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- モデル選択 -->
+                <Label Grid.Row="0" Grid.Column="0" Content="文字起こしモデル:" VerticalAlignment="Center"/>
+                <ComboBox Grid.Row="0" Grid.Column="1" Name="cmbModel" Height="28" VerticalContentAlignment="Center" SelectionChanged="CmbModel_SelectionChanged"/>
+                <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Margin="10,0,0,0">
+                    <TextBlock Name="lblModelStatus" Text="確認中..." VerticalAlignment="Center" Foreground="#16A34A" FontWeight="SemiBold" Margin="0,0,8,0"/>
+                    <Button Name="btnDownloadModel" Content="ダウンロード" Width="100" Height="28" Click="BtnDownloadModel_Click" Visibility="Collapsed"/>
+                </StackPanel>
+
+                <!-- モデルDL進捗 (必要な時だけ表示) -->
+                <ProgressBar Grid.Row="0" Grid.Column="1" Name="pbDownload" Height="4" VerticalAlignment="Bottom" Visibility="Collapsed" Margin="0,0,0,-4"/>
+
+                <!-- 文脈・固有名詞 (オプション) -->
+                <Label Grid.Row="1" Grid.Column="0" Content="文脈・固有名詞:" VerticalAlignment="Center" Margin="0,8,0,0"/>
+                <Grid Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBox Grid.Row="0" Name="txtContextPrompt" Height="28" VerticalContentAlignment="Center" Padding="4"
+                             ToolTip="会議名、出席者、地域の河川名（例: 権現ノ木川）などをカンマ区切りで入力すると、WhisperとAIの誤認識を強力に防ぎます"/>
+                    <TextBlock Grid.Row="1" Text="※ 会議の議題や頻出する固有名詞（例: 権現ノ木川, 治水計画, 山田課長）を入力すると認識率が大幅に向上します"
+                               Foreground="#64748B" FontSize="11" Margin="2,2,0,0"/>
+                </Grid>
+            </Grid>
+        </GroupBox>
+
+        <!-- 3. AI文章校正・話者ラベリング (Gemini) -->
+        <GroupBox Grid.Row="2" Header="AI文章校正・整形・話者分離 (Google Gemini API)">
+            <StackPanel>
+                <CheckBox Name="chkAiCorrection" Content="文字起こし後にAIで文章を自動校正・整形する" FontWeight="SemiBold" Margin="0,0,0,8"
+                          Checked="ChkAiCorrection_Changed" Unchecked="ChkAiCorrection_Changed"/>
+
+                <Grid Name="panelAiSettings">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="280"/>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Label Grid.Row="0" Grid.Column="0" Content="APIキー:" VerticalAlignment="Center"/>
+                    <PasswordBox Grid.Row="0" Grid.Column="1" Name="txtApiKey" Height="26" VerticalContentAlignment="Center"/>
+
+                    <Label Grid.Row="0" Grid.Column="2" Content="AIモデル:" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    <ComboBox Grid.Row="0" Grid.Column="3" Name="cmbGeminiModel" Height="26" VerticalContentAlignment="Center" IsEditable="True"/>
+
+                    <Label Grid.Row="1" Grid.Column="0" Content="補正モード:" VerticalAlignment="Center" Margin="0,6,0,0"/>
+                    <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,6,0,0">
+                        <RadioButton Name="rbModeProofread" Content="最小補正 (誤字脱字・助詞のみ修正)" Margin="0,0,14,0" IsChecked="True"/>
+                        <RadioButton Name="rbModeFormat" Content="文書整形 (Word・議事録向けMarkdown)" Margin="0,0,14,0"/>
+                        <RadioButton Name="rbModeDiarize" Content="話者ラベリング (文脈から発言者を分離)" Margin="0,0,14,0"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- 4. 詳細設定 (通常は非表示、エキスパンダー) -->
+        <Expander Grid.Row="3" Header="⚙️ 詳細設定 (ハードウェア / スレッド / 幻覚対策)" Margin="0,0,0,10" Background="White" Padding="8">
+            <StackPanel Margin="0,8,0,0">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                    <Label Content="実行モード:" Width="80"/>
+                    <ComboBox Name="cmbBackend" Width="140" Height="26" VerticalContentAlignment="Center">
+                        <ComboBoxItem Content="自動判別 (推奨)" Tag="auto" IsSelected="True"/>
+                        <ComboBoxItem Content="Vulkan (GPU)" Tag="vulkan"/>
+                        <ComboBoxItem Content="CPU (互換モード)" Tag="cpu"/>
+                    </ComboBox>
+                    <Label Content="GPU ID:" Width="60" Margin="12,0,0,0"/>
+                    <TextBox Name="txtGpuDevice" Width="40" Height="26" Text="0" VerticalContentAlignment="Center" ToolTip="通常は 0"/>
+                    <Label Content="CPUスレッド:" Width="80" Margin="12,0,0,0"/>
+                    <TextBox Name="txtThreads" Width="40" Height="26" Text="0" VerticalContentAlignment="Center" ToolTip="0で自動割り当て"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <CheckBox Name="chkVad" Content="VAD (無音検出カット) を有効にする [リピート幻覚防止]" IsChecked="True" VerticalAlignment="Center" Margin="0,0,20,0"
+                              ToolTip="無音区間をカットしてWhisperに渡すことで、『ありがとうございました』等の無限ループを強力に防止します"/>
+                    <CheckBox Name="chkFlashAttn" Content="Flash Attention (最新GPU高速化 / 古いGPUではオフ推奨)" IsChecked="False" VerticalAlignment="Center"
+                              ToolTip="有効にすると高速化されますが、古いGPUではクラッシュすることがあるため初期値はオフです"/>
+                </StackPanel>
+            </StackPanel>
+        </Expander>
+
+        <!-- 5. 出力先・進捗バー・開始ボタン -->
+        <Border Grid.Row="4" Background="White" BorderBrush="#E0E3E8" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- 出力パス表示 -->
+                <Grid Grid.Row="0" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="📁 保存先: " FontWeight="SemiBold" Foreground="#475569" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="1" Name="txtOutputDir" IsReadOnly="True" Background="Transparent" BorderThickness="0"
+                             Text="変換開始時に自動決定されます" Foreground="#0284C7" VerticalAlignment="Center" TextWrapping="NoWrap"/>
+                    <Button Grid.Column="2" Name="btnOpenOutputDir" Content="📁 出力フォルダを開く" Click="BtnOpenOutputDir_Click"/>
+                </Grid>
+
+                <!-- 進捗バー -->
+                <Grid Grid.Row="1" Margin="0,0,0,8">
+                    <ProgressBar Name="pbProgress" Height="20" Minimum="0" Maximum="100" Value="0" Foreground="#0284C7"/>
+                    <TextBlock Name="lblProgress" Text="待機中" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="11" Foreground="#1E293B"/>
+                </Grid>
+
+                <!-- 開始ボタン -->
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Name="lblStatus" Text="音声ファイルを選択してください" Foreground="#64748B" VerticalAlignment="Center" FontSize="12"/>
+                    <Button Grid.Column="1" Name="btnStart" Content="▶ 文字起こしを開始する" Style="{StaticResource PrimaryButton}"
+                            Width="200" Height="36" FontSize="13" Click="BtnStart_Click"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- 6. プレビュー＆ログタブ -->
+        <TabControl Grid.Row="5" Name="tabResults">
+            <TabItem Header="✨ 校正後テキスト">
+                <Grid Margin="4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBox Name="txtPreviewCorrected" Grid.Row="0" IsReadOnly="True" VerticalScrollBarVisibility="Auto"
+                             TextWrapping="Wrap" AcceptsReturn="True" FontSize="13" FontFamily="Yu Gothic UI, Meiryo, sans-serif"
+                             Padding="8" Background="White" BorderBrush="#CBD5E1"/>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
+                        <Button Content="📋 クリップボードにコピー" Click="BtnCopyCorrected_Click" Margin="0,0,8,0"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="📝 生文字起こし (Whisper)">
+                <Grid Margin="4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBox Name="txtPreviewRaw" Grid.Row="0" IsReadOnly="True" VerticalScrollBarVisibility="Auto"
+                             TextWrapping="Wrap" AcceptsReturn="True" FontSize="13" FontFamily="Yu Gothic UI, Meiryo, sans-serif"
+                             Padding="8" Background="White" BorderBrush="#CBD5E1"/>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
+                        <Button Content="📋 クリップボードにコピー" Click="BtnCopyRaw_Click" Margin="0,0,8,0"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="⏱️ 字幕 (SRT)">
+                <Grid Margin="4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBox Name="txtPreviewSrt" Grid.Row="0" IsReadOnly="True" VerticalScrollBarVisibility="Auto"
+                             TextWrapping="Wrap" AcceptsReturn="True" FontSize="12" FontFamily="Consolas, monospace"
+                             Padding="8" Background="White" BorderBrush="#CBD5E1"/>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
+                        <Button Content="📋 クリップボードにコピー" Click="BtnCopySrt_Click" Margin="0,0,8,0"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="📜 処理ログ">
+                <TextBox Name="txtLog" IsReadOnly="True" VerticalScrollBarVisibility="Auto"
+                         TextWrapping="Wrap" AcceptsReturn="True" FontSize="11" FontFamily="Consolas, monospace"
+                         Padding="6" Background="#1E293B" Foreground="#E2E8F0" Margin="4"/>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>

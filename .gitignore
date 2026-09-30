@@ -1,0 +1,49 @@
+# Visual Studio / .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+
+# Whisper Models (大容量ファイルは除外)
+*.bin
+*.pt
+models/*.bin
+system/models/*.bin
+DIST_CPP/APP/models/*.bin
+DIST_RELEASE/system/models/*.bin
+
+# 個人設定・APIキー漏洩防止
+config.json
+system/config.json
+DIST_CPP/APP/config.json
+DIST_RELEASE/system/config.json
+
+# 出力データ (文字起こし結果・ログ)
+output/
+DIST_CPP/output/
+DIST_RELEASE/output/
+*.log
+
+# C++ ビルドフォルダ・ソース (バイナリのみGitHub Releasesで配布)
+build*/
+whisper-src/
+
+# ビルドツール (リポジトリには含めない)
+dotnet-sdk/
+ilspycmd/
+
+# 配布パッケージ (GitHub Releasesで配布)
+DIST_CPP/
+DIST_RELEASE/
+
+# サンプル音声 (著作権・容量の観点から除外)
+samples/
+DIST_RELEASE/samples/
+
+# その他
+.DS_Store
+Thumbs.db
+*.tmp
